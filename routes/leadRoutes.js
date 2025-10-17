@@ -55,10 +55,10 @@ router.get("/", async (req, res) => {
       return res.status(400).json({ message: "User ID missing in headers" });
     }
 
-    let leads;
 
     const safeLeads = await Lead.find({ leadOwner: userId });
 // for later use
+    // let leads;
     // if (userRole === "super_admin") {
     //   // Super admin can view all leads
     //   leads = await Lead.find({});
