@@ -17,7 +17,7 @@ router.post("/create",roleAuth(["super_admin"]), async (req, res) => {
     }
 
     // Auto-fill leadOwner from logged-in user if not provided
-    const finalLeadOwner = leadOwner || req.user.id || "Unknown";
+    const finalLeadOwner = req.user.id || "Unknown";
 
     const lead = new Lead({
       company,
@@ -45,29 +45,65 @@ router.post("/create",roleAuth(["super_admin"]), async (req, res) => {
   }
 });
 
-// ✅ Get All Leads
+// ✅ Get All Leads (secured by leadOwner)
 router.get("/", async (req, res) => {
   try {
-    const id =  req.headers["x-user-id"];
-    const role =  req.headers["x-user-role"];
-    const filter = role === "super_admin" ? {} : { leadOwner: id };
-    const leads = await Lead.find(filter);
-    res.status(200).json(leads);
+    const userId = req.headers["x-user-id"];
+    const userRole = req.headers["x-user-role"];
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID missing in headers" });
+    }
+
+    let leads;
+
+    const safeLeads = await Lead.find({ leadOwner: userId });
+// for later use
+    // if (userRole === "super_admin") {
+    //   // Super admin can view all leads
+    //   leads = await Lead.find({});
+    // } else {
+    //   // Regular user → only their leads
+    //   leads = await Lead.find({ leadOwner: userId });
+    // }
+
+    // // ✅ Double-check: only return leads actually owned by this user (safety filter)
+    // const safeLeads =
+    //   userRole === "super_admin"
+    //     ? leads
+    //     : leads.filter((lead) => String(lead.leadOwner) === String(userId));
+    // console.log(safeLeads);
+    res.status(200).json(safeLeads);
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch leads", error: error.message });
+    console.error("❌ Error fetching leads:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to fetch leads", error: error.message });
   }
 });
 
-// ✅ Filter Leads
+
+// ✅ Filter Leads (restricted by owner too)
 router.get("/filter", async (req, res) => {
   try {
-    const { company, email, phone, name } = req.query;
-    const filter = {};
+    const userId = req.headers["x-user-id"];
+    const userRole = req.headers["x-user-role"];
+    const { company, email, phone, name, status } = req.query;
 
+    if (!userId) {
+      return res.status(400).json({ message: "User ID missing in headers" });
+    }
+
+    // Start with owner restriction
+    const filter = userRole === "super_admin" ? {} : { leadOwner: userId };
+
+    // Add filters dynamically (AND condition)
     if (company) filter.company = { $regex: company, $options: "i" };
     if (email) filter.email = { $regex: email, $options: "i" };
     if (phone) filter.phone = { $regex: phone, $options: "i" };
+    if (status) filter.leadStatus = { $regex: status, $options: "i" };
     if (name) {
+      // Combine OR for name with the rest of AND filters
       filter.$or = [
         { firstName: { $regex: name, $options: "i" } },
         { lastName: { $regex: name, $options: "i" } },
@@ -75,11 +111,21 @@ router.get("/filter", async (req, res) => {
     }
 
     const leads = await Lead.find(filter);
-    if (!leads.length)
-      return res.status(404).json({ message: "No leads found for given filters" });
+    safeLeads = leads.filter((lead) => String(lead.leadOwner) === String(userId));
+// for future use
+    // Extra protection — only leads belonging to this user
+    // const safeLeads =
+    //   userRole === "super_admin"
+    //     ? leads
+    //     : leads.filter((lead) => String(lead.leadOwner) === String(userId));
 
-    res.status(200).json(leads);
+    // if (!safeLeads.length) {
+    //   return res.status(404).json({ message: "No leads found for given filters" });
+    // }
+
+    res.status(200).json(safeLeads);
   } catch (error) {
+    console.error("❌ Error filtering leads:", error);
     res.status(500).json({ message: "Error filtering leads", error: error.message });
   }
 });
