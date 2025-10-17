@@ -5,12 +5,10 @@ function roleAuth(allowedRoles = []) {
         const userId = req.headers["x-user-id"];
         const userRole = req.headers["x-user-role"];
         const token = req.headers["x-user-token"];
-        console.log(userRole);
+        
       if (!token) {
         return res.status(401).json({ error: "User not authenticated" });
       }
-    //   const {id: userId} = req.user
-    //   const { role } = req.user;
 
       if (allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
         return res.status(403).json({
