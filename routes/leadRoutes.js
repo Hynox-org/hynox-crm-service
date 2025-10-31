@@ -39,14 +39,12 @@ router.post("/create", async (req, res) => {
       });
     }
 
-    const finalLeadOwner = userId || "Unknown";
-
     const lead = new Lead({
       company,
       firstName,
       lastName,
       email,
-      leadOwner: finalLeadOwner,
+      leadOwner,
       phone,
       leadSource,
       Industry,

@@ -13,6 +13,13 @@ app.use(helmet());
 const leadRoutes = require("./routes/leadRoutes");
 app.use("/crm/api/lead", leadRoutes);
 
+//user routes
+const userRoutes = require("./routes/userRoutes");
+app.use("/crm/api/user", userRoutes);
+
+//invite route
+// const inviteRoutes = require("./routes/inviteRoutes");
+// app.use("/crm/api/invite", inviteRoutes);
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI ,  {
     dbName: "hynox-crm",
